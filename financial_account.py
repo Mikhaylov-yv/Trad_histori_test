@@ -61,8 +61,3 @@ if __name__ == '__main__':
     ak.get_portfel_price({'HYDR': 0.7})
     # {'HYDR': 0, 'YNDX': 0}
     print(ak.__dict__)
-
-    # ak.buy_lot('YNDX',2,568.54,3)
-    # print(ak.free_money, ak.tool_dict)
-    # ak.sell_lot('YNDX', 2, 600)
-    # print(ak.free_money, ak.tool_dict)
