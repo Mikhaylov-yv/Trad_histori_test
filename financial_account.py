@@ -20,11 +20,11 @@ class Financial_account:
 
     # Метод для покупки акций
     def buy_lot(self,lot_name, lot_count,lot_size, lot_price, commission = 0.00015):
-        commission = commission * lot_count * lot_price * lot_size
-        if self.free_money <= lot_count * lot_price + commission:
+        commission = commission * lot_count * lot_size * lot_price
+        if self.free_money <= lot_count * lot_size * lot_price + commission:
             return print('Ограниечение по деньгам')
         if lot_name in self.tool_dict:
-            self.tool_dict[lot_name] += lot_count
+            self.tool_dict[lot_name] += lot_count * lot_size
         else:
             self.tool_dict[lot_name] = lot_count * lot_size
         self.free_money -= lot_price * lot_count * lot_size + commission
@@ -34,7 +34,7 @@ class Financial_account:
     def sell_lot(self, lot_name, lot_count, lot_size, lot_price, commission=0.00015):
         commission = commission * lot_count * lot_price * lot_size
         if lot_name not in self.tool_dict: return print('Лоты отсутствуют')
-        if self.tool_dict[lot_name] < lot_count: return print('Ограничение по количеству лотов')
+        if self.tool_dict[lot_name] < lot_count * lot_size: return print('Ограничение по количеству лотов')
         self.tool_dict[lot_name] -= lot_count * lot_size
         self.free_money += lot_price * lot_count * lot_size  + commission
         # self.portfel_price = self.get_portfel_price()

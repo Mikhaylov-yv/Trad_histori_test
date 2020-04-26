@@ -11,7 +11,6 @@ def open(path):
     df['DATE_TIME'] = df.apply(lambda x: str(x['DATE'])[:4] + '-' + str(x['DATE'])[4:6] + '-' + str(x['DATE'])[6:8]
                                + ' ' + str(x['TIME'])[:2] + ':' + str(x['TIME'])[2:4] + ':' + str(x['TIME'])[4:6],
                                axis=1)
-    print(df.loc[1])
     df.DATE_TIME = pd.to_datetime(df.DATE_TIME)
     df.index = df.DATE_TIME
     df = df.drop(['DATE', 'TIME', 'DATE_TIME'], axis=1)
