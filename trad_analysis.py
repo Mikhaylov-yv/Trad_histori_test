@@ -157,6 +157,7 @@ class Analysis:
 
 if __name__ == '__main__':
 
+
     import open_finam_data
     tolls_path_list = ['HYDR_190101_200425.csv', 'POLY_190101_200425.csv', 'YNDX_190101_200425.csv',
                        'TATN_190101_200425.csv']
