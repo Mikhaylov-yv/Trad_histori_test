@@ -2,6 +2,7 @@ import pandas as pd
 import financial_account
 
 
+
 class Analysis:
 
     def __init__(self, df_dikt):
