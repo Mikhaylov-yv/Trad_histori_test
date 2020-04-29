@@ -39,28 +39,6 @@ class Analysis:
         self.df_cignal_dict = self._get_intersection_two_ma_samp(df_dikt)
         return self
 
-        # Установка сигналов
-
-    def _get_intersection_two_ma_samp(self, df_dikt):
-
-        i = 2
-        for df_toll in list(df_dikt):
-            ma_difference = []
-            for index in range(len(df_dikt[df_toll].index)):
-                ma_difference.append(df_dikt[df_toll].loc[df_dikt[df_toll].index[index],
-                                                          'ma_samp_slow'] - df_dikt[df_toll].loc[
-                                         df_dikt[df_toll].index[index], 'ma_samp_fast'])
-                if index < i: continue
-                ma_samp_fast_pct_change = df_dikt[df_toll].loc[df_dikt[df_toll].index[index], 'ma_samp_fast_pct_change']
-                ma_sum = ma_difference[-1] + ma_difference[-1 - i]
-                peresech = abs(ma_sum) < abs(ma_difference[-1]) and abs(ma_sum) < abs(
-                    ma_difference[-1 - i])  # nd abs(ma_samp_fast_pct_change) > pct_change
-                #         peresech = abs(ma_samp_fast_pct_change) > 0.01 # 1%
-                #     if peresech == True: print(df_test.index[index])
-                df_dikt[df_toll].loc[df_dikt[df_toll].index[index], 'SIGNAL'] = peresech
-                df_dikt[df_toll].loc[df_dikt[df_toll].index[index],
-                                     'POZISION'] = 'short' if ma_samp_fast_pct_change > 0 else 'long'
-        return df_dikt
 
     def get_test(self, money = 100000,strategy_trad = 'position'):
         # Получение размеченного df с сигналами для сделок
@@ -115,9 +93,97 @@ class Analysis:
                     self.portfel_df_dict[tool].loc[self.data_period_dick['end'], 'Portfel_vol']))
         return self
 
+    def prof_calculation(self):
 
-    def rept(self, type):
-        self.portfel_df_dict
+        # Отчет эфективности стратегии
+        # df = pd.DataFrame(columns=['CAGR','MAR','SHARP', 'QT_TRADES','HIT_TRADES', 'MAXSIMUM_DROP', 'LENGTH_DROP'] )
+        # test_df.portfel_df_dict['HYDR '].pivot_table[index = ]
+        trade_df_dict = {}
+        for toll in list(self.portfel_df_dict):
+            trade_df = self.portfel_df_dict[toll][self.portfel_df_dict[toll].trade > '']
+            histori_df = self.portfel_df_dict[toll]
+            time_step = self.data_period_dick['step']
+            print(toll)
+            #     QT_TRADES количество сделок
+            QT_TRADES = trade_df.shape[0]
+            print('Количество сделок: ' + str(QT_TRADES))
+            #     HIT_TRADES количество успешных сделок
+            last_ind = trade_df.index[-1]
+            for trade_ind in range(len(trade_df.index)):
+                ind_df = trade_df.index[trade_ind]
+                if ind_df >= last_ind: continue
+                ind_nxt_df = trade_df.index[trade_ind + 1]
+                trade_nau = trade_df.loc[ind_df, ['Portfel_vol', 'trade']]
+                trade_nau_tip = trade_nau[1]
+                trade_next_tip = trade_df.loc[ind_nxt_df, 'trade']
+                i = 1
+                while trade_next_tip == trade_nau_tip and ind_nxt_df >= last_ind:
+                    if trade_df.index[trade_ind + 1] == last_ind: break
+                    ind_nxt_df = trade_df.index[trade_ind + 1 + i]
+                if ind_nxt_df >= last_ind: break
+                trade_next = trade_df.loc[ind_nxt_df, ['Portfel_vol', 'trade']]
+                if trade_next[0] > trade_nau[0]:
+                    trade_df.loc[ind_df, 'quality_trade'] = True
+                else:
+                    trade_df.loc[ind_df, 'quality_trade'] = False
+            HIT_TRADES = trade_df[trade_df.quality_trade == True].dropna().shape[0] / trade_df.dropna().shape[0]
+            print('Количество удачных:' + str(HIT_TRADES))
+            trade_df_dict[toll] = trade_df
+            #     MAXSIMUM_DROP максимальное падение %
+            idxmin = histori_df.Portfel_vol.idxmin()
+            idxmax = histori_df.loc[histori_df.Portfel_vol.index <= idxmin, 'Portfel_vol'].idxmax()
+            MAXSIMUM_DROP = (histori_df.loc[idxmax, 'Portfel_vol'] - histori_df.loc[idxmin, 'Portfel_vol']) / \
+                            histori_df.loc[idxmax, 'Portfel_vol']
+            print('MAXSIMUM_DROP: ' + str(MAXSIMUM_DROP))
+            #     LENGTH_DROP продолжительность падения
+            vol_list = histori_df.Portfel_vol.values
+            LENGTH_DROP = time_step
+            for vol_id in range(len(list(vol_list)) - 1):
+                if vol_list[vol_id] > vol_list[vol_id + 1]: LENGTH_DROP += time_step
+            print('LENGTH_DROP: ' + str(LENGTH_DROP))
+            #     SHARP Расчет коэфициента Шарпа
+            # Безрисковый доход
+            Rf = 0.06 / 260
+            # Расчитанный средний доход
+            sharp_df = self.portfel_df_dict[toll]
+            sharp_df.Portfel_vol = sharp_df.Portfel_vol.round(2)
+            sharp_df = sharp_df.resample(pd.Timedelta('1 D')).last()
+
+            # Расчитанный средний доход
+            for index in sharp_df.index[1:]:
+                nau_vol = sharp_df.loc[index, 'Portfel_vol']
+                early_vol = sharp_df.loc[index - pd.Timedelta('1 D'), 'Portfel_vol']
+                sharp_df.loc[index, 'pruf'] = (nau_vol - early_vol) / early_vol
+            mean_pruf = sharp_df.pruf.mean()
+            # Среднее отклонение дохода
+            std_pruf = sharp_df.pruf.std()
+            # Расчет
+            # print([std_return, ])
+            SHARP = (mean_pruf - Rf) / std_pruf
+            print('SHARP: ' + str(SHARP) + '\n=============================')
+
+       # Установка сигналов
+
+    def _get_intersection_two_ma_samp(self, df_dikt):
+
+        i = 2
+        for df_toll in list(df_dikt):
+            ma_difference = []
+            for index in range(len(df_dikt[df_toll].index)):
+                ma_difference.append(df_dikt[df_toll].loc[df_dikt[df_toll].index[index],
+                                                          'ma_samp_slow'] - df_dikt[df_toll].loc[
+                                         df_dikt[df_toll].index[index], 'ma_samp_fast'])
+                if index < i: continue
+                ma_samp_fast_pct_change = df_dikt[df_toll].loc[df_dikt[df_toll].index[index], 'ma_samp_fast_pct_change']
+                ma_sum = ma_difference[-1] + ma_difference[-1 - i]
+                peresech = abs(ma_sum) < abs(ma_difference[-1]) and abs(ma_sum) < abs(
+                    ma_difference[-1 - i])  # nd abs(ma_samp_fast_pct_change) > pct_change
+                #         peresech = abs(ma_samp_fast_pct_change) > 0.01 # 1%
+                #     if peresech == True: print(df_test.index[index])
+                df_dikt[df_toll].loc[df_dikt[df_toll].index[index], 'SIGNAL'] = peresech
+                df_dikt[df_toll].loc[df_dikt[df_toll].index[index],
+                                     'POZISION'] = 'short' if ma_samp_fast_pct_change > 0 else 'long'
+        return df_dikt
 
     # Определение величины количества лотов для покпки 1/4 цены портфеля
     def _get_lot_size(self, val_portfel, lot_price, lot_size):
@@ -178,8 +244,8 @@ if __name__ == '__main__':
         df_dikt[toll_path.split('_')[0]] = df
 
     t = Analysis(df_dikt).get_two_ma_samp()
-    print(t.df_cignal_dict['HYDR'])
-    t.get_test()
+    t = t.get_test()
+    t.prof_calculation()
 
 
 
