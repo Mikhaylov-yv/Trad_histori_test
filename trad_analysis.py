@@ -1,6 +1,6 @@
 import pandas as pd
 import financial_account
-
+import numpy as np
 
 
 class Analysis:
@@ -37,27 +37,33 @@ class Analysis:
 
       # Установка сигналов
 
+
     def _get_intersection_two_ma_samp(self, df_dikt):
 
-        i = 2
-        for df_toll in list(df_dikt):
-            ma_difference = []
-            for index in range(len(df_dikt[df_toll].index)):
-                ma_difference.append(df_dikt[df_toll].loc[df_dikt[df_toll].index[index],
-                                                          'ma_samp_slow'] - df_dikt[df_toll].loc[
-                                         df_dikt[df_toll].index[index], 'ma_samp_fast'])
-                if index < i: continue
-                ma_samp_fast_pct_change = df_dikt[df_toll].loc[df_dikt[df_toll].index[index], 'ma_samp_fast_pct_change']
-                ma_sum = ma_difference[-1] + ma_difference[-1 - i]
-                peresech = abs(ma_sum) < abs(ma_difference[-1]) and abs(ma_sum) < abs(
-                    ma_difference[-1 - i])  # nd abs(ma_samp_fast_pct_change) > pct_change
-                #         peresech = abs(ma_samp_fast_pct_change) > 0.01 # 1%
-                #     if peresech == True: print(df_test.index[index])
-                df_dikt[df_toll].loc[df_dikt[df_toll].index[index], 'SIGNAL'] = peresech
-                df_dikt[df_toll].loc[df_dikt[df_toll].index[index],
-                                     'POZISION'] = 'short' if ma_samp_fast_pct_change < 0 else 'long'
-        return df_dikt
 
+        for df_toll in list(df_dikt):
+            df = df_dikt[df_toll]
+            df['ma_samp_raznost'] = df.ma_samp_fast - df.ma_samp_slow
+            i = 0
+            for index in df.index:
+                # print(index)
+                if index <= df.index[0]: continue
+                index_early = df.index[i]
+                if df.loc[index, 'ma_samp_raznost'] > 0 and df.loc[index_early, 'ma_samp_raznost'] < 0:
+                    SIGNAL = True
+                    df.loc[index, 'SIGNAL'] = SIGNAL
+                    df.loc[index, 'POZISION'] = 'long'
+                elif df.loc[index, 'ma_samp_raznost'] < 0 and df.loc[index_early, 'ma_samp_raznost'] > 0:
+                    SIGNAL = True
+                    df.loc[index, 'SIGNAL'] = SIGNAL
+                    df.loc[index, 'POZISION'] = 'short'
+                else:
+                    df.loc[index, 'SIGNAL'] = np.nan
+                    df.loc[index, 'POZISION'] = np.nan
+
+                i+=1
+            df_dikt[df_toll] = df
+        return df_dikt
 
 
     def get_test(self, money = 100000,strategy_trad = 'position'):
