@@ -40,16 +40,20 @@ class Financial_account:
         # self.portfel_price = self.get_portfel_price()
 
     # Определяем стоимость портфеля
-    def get_portfel_price(self, cot_dict, commission=0.00015):
-
+    def get_portfel_price(self, cot_dict, commission_pct=0.00015):
         val_mani_in_lot = 0
         for tool in list(cot_dict):
-            if tool not in list(self.tool_dict): continue
+            if tool not in list(self.tool_dict):
+                self.val_portfel = self.free_money + val_mani_in_lot
+                continue
             vol = self.tool_dict[tool]
             prise = cot_dict[tool]
-            commission = vol * prise * commission
+            commission = vol * prise * commission_pct
             val_mani_in_lot += vol * prise - commission
-        self.val_portfel = self.free_money + val_mani_in_lot
+            self.val_portfel = self.free_money + val_mani_in_lot
+            if self.val_portfel< 0:
+                print('get_portfel_price er')
+
         return self.val_portfel
 
 

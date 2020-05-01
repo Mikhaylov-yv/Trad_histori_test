@@ -10,8 +10,9 @@ class Analysis:
         self.df_dikt = df_dikt
         self.data_period_dick = self._get_period()
         self.data_time_range = self._get_data_time_range()
-        self.lot_size_dict = {'HYDR': 1000, 'POLY': 1, 'YNDX': 1, 'TATN': 1}
+        self.lot_size_dict = {'HYDR': 1000, 'POLY': 1, 'YNDX': 1, 'TATN': 1, 'MOEX' : 10}
         self.portfel_df = pd.DataFrame(index=self.data_time_range)
+        self.df_SIGNAL = pd.DataFrame()
 
     # Основной метод тестирования торговой стратегии
     # Параметры:
@@ -32,14 +33,20 @@ class Analysis:
             df_dikt[df_toll]['ma_samp_fast_pct_change'] = df_dikt[df_toll]['ma_samp_fast'].pct_change(
                 periods=ma_samp_fast_param)
         self.df_cignal_dict = self._get_intersection_two_ma_samp(df_dikt)
+        self._creat_df_signal(self.df_cignal_dict)
         return self
 
+    # Создние df со всеми сигналами
+    def _creat_df_signal(self, df_dikt):
+        for tool in df_dikt:
+            for index in df_dikt[tool].index:
+                if df_dikt[tool].loc[index, 'SIGNAL'] != True: continue
+                self.df_SIGNAL.loc[index, tool] = df_dikt[tool].loc[index, 'POZISION']
 
       # Установка сигналов
 
 
     def _get_intersection_two_ma_samp(self, df_dikt):
-
 
         for df_toll in list(df_dikt):
             df = df_dikt[df_toll]
@@ -64,6 +71,74 @@ class Analysis:
                 i+=1
             df_dikt[df_toll] = df
         return df_dikt
+
+
+    def get_test_all(self, money = 100000,strategy_trad = 'position'):
+        # Получение размеченного df с сигналами для сделок
+        df_signal = self.df_SIGNAL
+        df_dikt = self._get_resempl(self.df_cignal_dict)
+        # Инициализация словаря с актуальными котировками на каждый цикл
+        cot_dict = self._get_cot_dict()
+        # {'stert': Timestamp('2020-01-23 10:10:00'),
+        #  'end': Timestamp('2020-04-24 18:50:00'),
+        #  'step': Timedelta('0 days 00:10:00')}
+        # Инциализируем данные о портфеле
+        portfel_df = pd.DataFrame(index = pd.date_range(start=self.data_period_dick['stert'],
+                                                        end=self.data_period_dick['end'],
+                                                        freq=self.data_period_dick['step']))
+        # Инициализация обекта данных о моем торговом аккаунте
+        my_account = financial_account.Financial_account()
+        my_account.add_mone(money)
+        # Цикл по индексам для всего периода времени
+        for index in portfel_df.index:
+
+
+            # Обновляем данные о котировках
+            for tool in list(df_dikt):
+                cot_dict[tool] = df_dikt[tool].loc[index, 'CLOSE']
+
+            # Обновляем ликвидность портфеля для текущего цыкла
+            vol = my_account.get_portfel_price(cot_dict)
+            portfel_df.loc[index, 'Portfel_vol'] = vol
+            if index not in df_signal.index: continue
+            signals = df_signal.loc[index].dropna().to_dict()
+            for tool in list(signals):
+                sig = signals[tool]
+                if sig == 'long':
+                    # Определяем размер позиции в зависимости от величины портфеля
+                    lot_count = self._get_lot_size(val_portfel=my_account.val_portfel, lot_price=cot_dict[tool],
+                                                   lot_size=self.lot_size_dict[tool])
+                    # Проверка достаточно ли свободных денег для покупки
+                    if my_account.free_money >= lot_count * cot_dict[tool] * self.lot_size_dict[tool]:
+                        my_account.buy_lot(lot_name=tool,
+                                           lot_count=lot_count,
+                                           lot_size=self.lot_size_dict[tool],
+                                           lot_price=cot_dict[tool])
+
+                        # Запись в portfel_df_dict о покупке
+                        portfel_df.loc[index, 'TOOL'] = tool
+                        portfel_df.loc[index, 'trade'] = 'buy'
+                        # Обновляем ликвидность портфеля
+                        portfel_df.loc[index, 'Portfel_vol'] = my_account.get_portfel_price(cot_dict).round(2)
+
+                if sig == 'short':
+                    # Провека наличия инструмента для продажи
+                    if tool not in list(my_account.tool_dict): continue
+                    # Продажа осуществляется в полном объеме акций
+                    # print(my_account.free_money, my_account.tool_dict)
+                    my_account.sell_lot(lot_name=tool, lot_count=my_account.tool_dict[tool], lot_size=1,
+                                        lot_price=cot_dict[tool])
+                    # Добавляем запись о продаже
+                    portfel_df.loc[index, 'TOOL'] = tool
+                    portfel_df.loc[index, 'trade'] = 'sell'
+                    # Обновляем ликвидность портфеля
+                    portfel_df.loc[index, 'Portfel_vol'] = my_account.get_portfel_price(cot_dict).round(2)
+            # print(my_account.free_money, my_account.tool_dict)
+        self.portfel_df = portfel_df
+        print(' Состояние на конец периода: ' + str(portfel_df.loc[self.data_period_dick['end'], 'Portfel_vol']))
+
+        return self
+
 
 
     def get_test(self, money = 100000,strategy_trad = 'position'):
@@ -192,6 +267,8 @@ class Analysis:
     # Определение величины количества лотов для покпки 1/4 цены портфеля
     def _get_lot_size(self, val_portfel, lot_price, lot_size):
         lpoz_size = 1 / 4
+        if int((val_portfel * lpoz_size) // lot_price / lot_size) < 0:
+            print('er')
         return int((val_portfel * lpoz_size) // lot_price / lot_size)
 
     # Получение словаря с крайними значениями периода инструментов и шага
@@ -243,13 +320,13 @@ if __name__ == '__main__':
     for toll_path in tolls_path_list:
         df = open_finam_data.open('../../input/' + toll_path)
         #  Фильтр дат
-        df = df.loc[df.index >= '2020-01-23']
+        df = df.loc[df.index >= '2020-02-23']
         #     df = df.loc[df.index <= '2019-07-10']
         df_dikt[toll_path.split('_')[0]] = df
 
     t = Analysis(df_dikt).get_two_ma_samp()
-    t = t.get_test()
-    t.prof_calculation()
+    t = t.get_test_all()
+    # t.prof_calculation()
 
 
 
