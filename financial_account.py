@@ -51,8 +51,6 @@ class Financial_account:
             commission = vol * prise * commission_pct
             val_mani_in_lot += vol * prise - commission
             self.val_portfel = self.free_money + val_mani_in_lot
-            # if self.val_portfel <= 0:
-            #     print('Ликвидность')
             assert self.val_portfel > 0, 'Ликвидность портфеля стала меньше нуля \n tool = ' + str(tool)
 
         return self.val_portfel
