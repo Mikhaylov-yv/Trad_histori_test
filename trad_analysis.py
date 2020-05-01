@@ -124,6 +124,7 @@ class Analysis:
                         # Запись в portfel_df_dict о покупке
                         df_portfel.loc[index, 'TOOL'] = tool
                         df_portfel.loc[index, 'trade'] = 'buy'
+                        df_portfel.loc[index, 'price'] = cot_dict[tool]
                         # Обновляем ликвидность портфеля
                         df_portfel.loc[index, 'Portfel_vol'] = my_account.get_portfel_price(cot_dict).round(2)
 
@@ -137,10 +138,12 @@ class Analysis:
                     # Добавляем запись о продаже
                     df_portfel.loc[index, 'TOOL'] = tool
                     df_portfel.loc[index, 'trade'] = 'sell'
+                    df_portfel.loc[index, 'price'] = cot_dict[tool]
                     # Обновляем ликвидность портфеля
                     df_portfel.loc[index, 'Portfel_vol'] = my_account.get_portfel_price(cot_dict).round(2)
             # print(my_account.free_money, my_account.tool_dict)
         self.portfel_df = df_portfel
+        print(list(self.portfel_df))
         print(' Состояние на конец периода: ' + str(df_portfel.loc[self.data_period_dick['end'], 'Portfel_vol']))
 
         return self
@@ -206,7 +209,42 @@ class Analysis:
         # df = pd.DataFrame(columns=['CAGR','MAR','SHARP', 'QT_TRADES','HIT_TRADES', 'MAXSIMUM_DROP', 'LENGTH_DROP'] )
         # test_df.portfel_df_dict['HYDR '].pivot_table[index = ]
 
+        def get_hit_trade(trade_tool_df, trade_df):
+            # Проверка правильности пришедших данных
+            assert len(trade_tool_df.index) > 2, 'Слишко мало записей для аналигза: ' + str(len(trade_tool_df.index))
+            last_ind = trade_tool_df.index[-1]
+            for trade_ind in range(len(trade_tool_df.index)):
+                ind_df = trade_tool_df.index[trade_ind]
+                if ind_df >= last_ind: continue
+                ind_nxt_df = trade_tool_df.index[trade_ind + 1]
+                trade_nau = trade_tool_df.loc[ind_df, ['price', 'trade']]
+                trade_nau_tip = trade_nau[1]
+                trade_next_tip = trade_tool_df.loc[ind_nxt_df, 'trade']
+                i = 1
+                while trade_next_tip == trade_nau_tip and ind_nxt_df >= last_ind:
+                    if trade_tool_df.index[trade_ind + 1] == last_ind: break
+                    ind_nxt_df = trade_tool_df.index[trade_ind + 1 + i]
+                if ind_nxt_df >= last_ind: break
+                trade_next = trade_tool_df.loc[ind_nxt_df, ['price', 'trade']]
+                if trade_next[1] == 'sell':
+                    if trade_next[0] > trade_nau[0]:
+                        trade_tool_df.loc[ind_df, 'quality_trade'] = True
+                        trade_df.loc[ind_df, 'quality_trade'] = True
+                    else:
+                        trade_tool_df.loc[ind_df, 'quality_trade'] = False
+                        trade_df.loc[ind_df, 'quality_trade'] = False
+                if trade_next[1] == 'buy':
+                    if trade_next[0] > trade_nau[0]:
+                        trade_tool_df.loc[ind_df, 'quality_trade'] = False
+                        trade_df.loc[ind_df, 'quality_trade'] = False
+                    else:
+                        trade_tool_df.loc[ind_df, 'quality_trade'] = True
+                        trade_df.loc[ind_df, 'quality_trade'] = True
+            return trade_df
+
+
         def get_calculation(portfel_df, toll):
+            assert 'trade' in list(portfel_df) , 'Нет столбца trade ' + str(list(portfel_df))
             trade_df = portfel_df[portfel_df.trade > '']
             histori_df = portfel_df
             time_step = self.data_period_dick['step']
@@ -215,24 +253,13 @@ class Analysis:
             QT_TRADES = trade_df.shape[0]
             print('Количество сделок: ' + str(QT_TRADES))
             #     HIT_TRADES количество успешных сделок
-            last_ind = trade_df.index[-1]
-            for trade_ind in range(len(trade_df.index)):
-                ind_df = trade_df.index[trade_ind]
-                if ind_df >= last_ind: continue
-                ind_nxt_df = trade_df.index[trade_ind + 1]
-                trade_nau = trade_df.loc[ind_df, ['Portfel_vol', 'trade']]
-                trade_nau_tip = trade_nau[1]
-                trade_next_tip = trade_df.loc[ind_nxt_df, 'trade']
-                i = 1
-                while trade_next_tip == trade_nau_tip and ind_nxt_df >= last_ind:
-                    if trade_df.index[trade_ind + 1] == last_ind: break
-                    ind_nxt_df = trade_df.index[trade_ind + 1 + i]
-                if ind_nxt_df >= last_ind: break
-                trade_next = trade_df.loc[ind_nxt_df, ['Portfel_vol', 'trade']]
-                if trade_next[0] > trade_nau[0]:
-                    trade_df.loc[ind_df, 'quality_trade'] = True
-                else:
-                    trade_df.loc[ind_df, 'quality_trade'] = False
+            if 'TOOL' in list(trade_df):
+                for tool in list(trade_df.TOOL.dropna().unique()):
+                    trade_tool_df = trade_df.loc[trade_df.TOOL == tool]
+                    if len(trade_tool_df.index) < 2: continue
+                    trade_df = get_hit_trade(trade_tool_df, trade_df)
+            else: trade_df = get_hit_trade(trade_df)
+
             HIT_TRADES = trade_df[trade_df.quality_trade == True].dropna().shape[0] / trade_df.dropna().shape[0]
             print('Процент удачных :' + str(round(HIT_TRADES * 100, 1)))
             #     MAXSIMUM_DROP максимальное падение %
@@ -268,18 +295,22 @@ class Analysis:
             # print([std_return, ])
             SHARP = (mean_pruf - Rf) / std_pruf
             print('SHARP: ' + str(round(SHARP * 100, 1)) + '\n=============================')
+            return trade_df
+
+
 
         if self.portfel_df_dict != {}:
             for toll in list(self.portfel_df_dict):
-                get_calculation(self.portfel_df_dict, toll = toll)
+                trade_df = get_calculation(self.portfel_df_dict, toll = toll)
 
 
         if list(self.portfel_df) != []:
             toll_list = list(self.df_dikt)
-            get_calculation(self.portfel_df, toll=toll_list)
+            trade_df = get_calculation(self.portfel_df, toll=toll_list)
 
-
-
+        # Размечаем качество сделок в первоначальной разметке
+        for tool in list(self.df_cignal_dict):
+            self.df_cignal_dict[tool]['quality_trade'] = trade_df['quality_trade']
 
 
     # Определение величины количества лотов для покпки 1/4 цены портфеля
@@ -338,13 +369,13 @@ if __name__ == '__main__':
     for toll_path in tolls_path_list:
         df = open_finam_data.open('../../input/' + toll_path)
         #  Фильтр дат
-        df = df.loc[df.index >= '2020-02-23']
+        df = df.loc[df.index >= '2020-02-01']
         #     df = df.loc[df.index <= '2019-07-10']
         df_dikt[toll_path.split('_')[0]] = df
 
     t = Analysis(df_dikt).get_two_ma_samp()
     t = t.get_test_all()
-    # t.prof_calculation()
+    t.prof_calculation()
 
 
 
