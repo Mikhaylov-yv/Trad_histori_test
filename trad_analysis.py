@@ -1,7 +1,8 @@
 import pandas as pd
 import financial_account
 import numpy as np
-
+import warnings
+warnings.filterwarnings('ignore')
 
 class Analysis:
 
