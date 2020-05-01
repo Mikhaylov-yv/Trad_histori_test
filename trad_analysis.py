@@ -24,6 +24,7 @@ class Analysis:
 
     # Расчет 2-х скользящих средних и среднего процентного изменения самой быстрой и разметка по ним
     def get_two_ma_samp(self, ma_samp_slow_param = 350 , ma_samp_fast_param = 100, pct_change = 0.01):
+
         df_dikt = self.df_dikt
         for df_toll in list(self.df_dikt):
             df_dikt[df_toll]['ma_samp_slow'] = df_dikt[df_toll].CLOSE.rolling(window=ma_samp_slow_param,
@@ -94,8 +95,13 @@ class Analysis:
 
 
             # Обновляем данные о котировках
+            continue_signal = True
             for tool in list(df_dikt):
-                cot_dict[tool] = df_dikt[tool].loc[index, 'CLOSE']
+                price_close = df_dikt[tool].loc[index, 'CLOSE']
+                if price_close > 0: continue_signal = False
+                cot_dict[tool] = price_close
+            # Если данных о котировках нет пропускаем цикл
+            if continue_signal: continue
 
             # Обновляем ликвидность портфеля для текущего цыкла
             vol = my_account.get_portfel_price(cot_dict)
