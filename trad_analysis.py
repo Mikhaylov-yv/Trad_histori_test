@@ -79,11 +79,11 @@ class Analysis:
         df_dikt = self._get_resempl(self.df_cignal_dict)
         # Инициализация словаря с актуальными котировками на каждый цикл
         cot_dict = self._get_cot_dict()
-        # {'stert': Timestamp('2020-01-23 10:10:00'),
+        # {'statr': Timestamp('2020-01-23 10:10:00'),
         #  'end': Timestamp('2020-04-24 18:50:00'),
         #  'step': Timedelta('0 days 00:10:00')}
         # Инциализируем данные о портфеле
-        portfel_df = pd.DataFrame(index = pd.date_range(start=self.data_period_dick['stert'],
+        portfel_df = pd.DataFrame(index = pd.date_range(start=self.data_period_dick['statr'],
                                                         end=self.data_period_dick['end'],
                                                         freq=self.data_period_dick['step']))
         # Инициализация обекта данных о моем торговом аккаунте
@@ -272,17 +272,17 @@ class Analysis:
         return int((val_portfel * lpoz_size) // lot_price / lot_size)
 
     # Получение словаря с крайними значениями периода инструментов и шага
-    # {'stert': Timestamp('2020-01-23 10:10:00'),
+    # {'statr': Timestamp('2020-01-23 10:10:00'),
     #  'end': Timestamp('2020-04-24 18:50:00'),
     #  'step': Timedelta('0 days 00:10:00')}
     def _get_period(self):
 
-        data_period_dick = {'stert': [], 'end': [], 'step': []}
+        data_period_dick = {'statr': [], 'end': [], 'step': []}
         for tool in list(self.df_dikt):
-            data_period_dick['stert'].append(self.df_dikt[tool].index[0])
+            data_period_dick['statr'].append(self.df_dikt[tool].index[0])
             data_period_dick['end'].append(self.df_dikt[tool].index[-1])
             data_period_dick['step'].append(self.df_dikt[tool].index[1] - self.df_dikt[tool].index[0])
-        data_period_dick['stert'] = max(data_period_dick['stert'])
+        data_period_dick['statr'] = max(data_period_dick['statr'])
         data_period_dick['end'] = min(data_period_dick['end'])
         data_period_dick['step'] = data_period_dick['step'][0]
         return data_period_dick
@@ -291,7 +291,7 @@ class Analysis:
     # Создание периода для стороннего использования
     # хорошо бы убрать
     def _get_data_time_range(self):
-        return pd.date_range(start=self.data_period_dick['stert'],
+        return pd.date_range(start=self.data_period_dick['statr'],
                              end=self.data_period_dick['end'],
                              freq=self.data_period_dick['step'])
 
