@@ -14,13 +14,7 @@ class Analysis:
         self.portfel_df = pd.DataFrame(index=self.data_time_range)
         self.df_SIGNAL = pd.DataFrame()
 
-    # Основной метод тестирования торговой стратегии
-    # Параметры:
-    # money(int) - стартовый капитал для тестирования
-    # strategy_trad(str) - стратегия торговли: позиционная('position'),
-    #                                          внутридневная('intraday'),
-    #                                          инвистиционная('investment')
-    # signal(str) - тип принимаемых сигналов для торговли: пересечение 2-х скользящих средних ('two_ma_samp')
+
 
     # Расчет 2-х скользящих средних и среднего процентного изменения самой быстрой и разметка по ним
     def get_two_ma_samp(self, ma_samp_slow_param = 350 , ma_samp_fast_param = 100, pct_change = 0.01):
@@ -73,6 +67,14 @@ class Analysis:
             df_dikt[df_toll] = df
         return df_dikt
 
+    # Основной метод тестирования торговой стратегии
+    # Параметры:
+    # money(int) - стартовый капитал для тестирования
+    # strategy_trad(str) - стратегия торговли: позиционная('position'),
+    #                                          внутридневная('intraday'),
+    #                                          инвистиционная('investment')
+    # signal(str) - тип принимаемых сигналов для торговли: пересечение 2-х скользящих средних ('two_ma_samp')
+
 
     def get_test_all(self, money = 100000,strategy_trad = 'position'):
         # Получение размеченного df с сигналами для сделок
@@ -80,18 +82,14 @@ class Analysis:
         df_dikt = self._get_resempl(self.df_cignal_dict)
         # Инициализация словаря с актуальными котировками на каждый цикл
         cot_dict = self._get_cot_dict()
-        # {'statr': Timestamp('2020-01-23 10:10:00'),
-        #  'end': Timestamp('2020-04-24 18:50:00'),
-        #  'step': Timedelta('0 days 00:10:00')}
-        # Инциализируем данные о портфеле
-        portfel_df = pd.DataFrame(index = pd.date_range(start=self.data_period_dick['statr'],
+        df_portfel = pd.DataFrame(index = pd.date_range(start=self.data_period_dick['statr'],
                                                         end=self.data_period_dick['end'],
                                                         freq=self.data_period_dick['step']))
         # Инициализация обекта данных о моем торговом аккаунте
         my_account = financial_account.Financial_account()
         my_account.add_mone(money)
         # Цикл по индексам для всего периода времени
-        for index in portfel_df.index:
+        for index in df_portfel.index:
 
 
             # Обновляем данные о котировках
@@ -105,7 +103,7 @@ class Analysis:
 
             # Обновляем ликвидность портфеля для текущего цыкла
             vol = my_account.get_portfel_price(cot_dict)
-            portfel_df.loc[index, 'Portfel_vol'] = vol
+            df_portfel.loc[index, 'Portfel_vol'] = vol
             if index not in df_signal.index: continue
             signals = df_signal.loc[index].dropna().to_dict()
             for tool in list(signals):
@@ -122,10 +120,10 @@ class Analysis:
                                            lot_price=cot_dict[tool])
 
                         # Запись в portfel_df_dict о покупке
-                        portfel_df.loc[index, 'TOOL'] = tool
-                        portfel_df.loc[index, 'trade'] = 'buy'
+                        df_portfel.loc[index, 'TOOL'] = tool
+                        df_portfel.loc[index, 'trade'] = 'buy'
                         # Обновляем ликвидность портфеля
-                        portfel_df.loc[index, 'Portfel_vol'] = my_account.get_portfel_price(cot_dict).round(2)
+                        df_portfel.loc[index, 'Portfel_vol'] = my_account.get_portfel_price(cot_dict).round(2)
 
                 if sig == 'short':
                     # Провека наличия инструмента для продажи
@@ -135,13 +133,13 @@ class Analysis:
                     my_account.sell_lot(lot_name=tool, lot_count=my_account.tool_dict[tool], lot_size=1,
                                         lot_price=cot_dict[tool])
                     # Добавляем запись о продаже
-                    portfel_df.loc[index, 'TOOL'] = tool
-                    portfel_df.loc[index, 'trade'] = 'sell'
+                    df_portfel.loc[index, 'TOOL'] = tool
+                    df_portfel.loc[index, 'trade'] = 'sell'
                     # Обновляем ликвидность портфеля
-                    portfel_df.loc[index, 'Portfel_vol'] = my_account.get_portfel_price(cot_dict).round(2)
+                    df_portfel.loc[index, 'Portfel_vol'] = my_account.get_portfel_price(cot_dict).round(2)
             # print(my_account.free_money, my_account.tool_dict)
-        self.portfel_df = portfel_df
-        print(' Состояние на конец периода: ' + str(portfel_df.loc[self.data_period_dick['end'], 'Portfel_vol']))
+        self.portfel_df = df_portfel
+        print(' Состояние на конец периода: ' + str(df_portfel.loc[self.data_period_dick['end'], 'Portfel_vol']))
 
         return self
 
