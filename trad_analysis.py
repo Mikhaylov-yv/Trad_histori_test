@@ -11,7 +11,8 @@ class Analysis:
         self.data_period_dick = self._get_period()
         self.data_time_range = self._get_data_time_range()
         self.lot_size_dict = {'HYDR': 1000, 'POLY': 1, 'YNDX': 1, 'TATN': 1, 'MOEX' : 10}
-        self.portfel_df = pd.DataFrame(index=self.data_time_range)
+        self.portfel_df_dict = {}
+        self.portfel_df = pd.DataFrame()
         self.df_SIGNAL = pd.DataFrame()
 
 
@@ -203,10 +204,10 @@ class Analysis:
         # Отчет эфективности стратегии
         # df = pd.DataFrame(columns=['CAGR','MAR','SHARP', 'QT_TRADES','HIT_TRADES', 'MAXSIMUM_DROP', 'LENGTH_DROP'] )
         # test_df.portfel_df_dict['HYDR '].pivot_table[index = ]
-        trade_df_dict = {}
-        for toll in list(self.portfel_df_dict):
-            trade_df = self.portfel_df_dict[toll][self.portfel_df_dict[toll].trade > '']
-            histori_df = self.portfel_df_dict[toll]
+
+        def get_calculation(portfel_df, toll):
+            trade_df = portfel_df[portfel_df.trade > '']
+            histori_df = portfel_df
             time_step = self.data_period_dick['step']
             print(toll)
             #     QT_TRADES количество сделок
@@ -232,25 +233,25 @@ class Analysis:
                 else:
                     trade_df.loc[ind_df, 'quality_trade'] = False
             HIT_TRADES = trade_df[trade_df.quality_trade == True].dropna().shape[0] / trade_df.dropna().shape[0]
-            print('Количество удачных:' + str(HIT_TRADES))
-            trade_df_dict[toll] = trade_df
+            print('Процент удачных :' + str(round(HIT_TRADES * 100, 1)))
             #     MAXSIMUM_DROP максимальное падение %
             idxmin = histori_df.Portfel_vol.idxmin()
             idxmax = histori_df.loc[histori_df.Portfel_vol.index <= idxmin, 'Portfel_vol'].idxmax()
             MAXSIMUM_DROP = (histori_df.loc[idxmax, 'Portfel_vol'] - histori_df.loc[idxmin, 'Portfel_vol']) / \
                             histori_df.loc[idxmax, 'Portfel_vol']
-            print('MAXSIMUM_DROP: ' + str(MAXSIMUM_DROP))
+            print('MAXSIMUM_DROP: ' + str(round(MAXSIMUM_DROP * 100, 1)))
             #     LENGTH_DROP продолжительность падения
             vol_list = histori_df.Portfel_vol.values
             LENGTH_DROP = time_step
             for vol_id in range(len(list(vol_list)) - 1):
                 if vol_list[vol_id] > vol_list[vol_id + 1]: LENGTH_DROP += time_step
-            print('LENGTH_DROP: ' + str(LENGTH_DROP))
+            print('Длительность паднгия : ' + str(LENGTH_DROP))
+            print('Период торговли : ' + str(trade_df.index[-1] - trade_df.index[0]))
             #     SHARP Расчет коэфициента Шарпа
             # Безрисковый доход
             Rf = 0.06 / 260
             # Расчитанный средний доход
-            sharp_df = self.portfel_df_dict[toll]
+            sharp_df = portfel_df
             sharp_df.Portfel_vol = sharp_df.Portfel_vol.round(2)
             sharp_df = sharp_df.resample(pd.Timedelta('1 D')).last()
 
@@ -265,7 +266,19 @@ class Analysis:
             # Расчет
             # print([std_return, ])
             SHARP = (mean_pruf - Rf) / std_pruf
-            print('SHARP: ' + str(SHARP) + '\n=============================')
+            print('SHARP: ' + str(round(SHARP * 100, 1)) + '\n=============================')
+
+        if self.portfel_df_dict != {}:
+            for toll in list(self.portfel_df_dict):
+                get_calculation(self.portfel_df_dict, toll = toll)
+
+
+        if list(self.portfel_df) != []:
+            toll_list = list(self.df_dikt)
+            get_calculation(self.portfel_df, toll=toll_list)
+
+
+
 
 
     # Определение величины количества лотов для покпки 1/4 цены портфеля
