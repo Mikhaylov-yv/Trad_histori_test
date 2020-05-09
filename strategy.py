@@ -3,6 +3,24 @@ import numpy as np
 
 class Strategy:
 
+    # Price Channel («Ценовой канал»)
+    def get_price_channel(self, period = 14):
+        n = period
+        df_dikt = self.df_dikt
+        for toll in list(df_dikt):
+            df = df_dikt[toll]
+            for index in df.index:
+                index_num = list(df.index).index(index)
+                pch = df.loc[df.index[index_num - n]:index, 'HIGH'].max()  # – верхняя линия (сопротивления)
+                pcl = df.loc[df.index[index_num - n]:index, 'LOW'].min()  # нижняя линия (поддержки)
+                pcm = (pch + pcl) / 2
+                df.loc[index, 'PCH'] = pch
+                df.loc[index, 'PCL'] = pcl
+                df.loc[index, 'PCM'] = pcm
+            df_dikt[toll] = df
+        self.df_dikt = df_dikt
+        return self
+
     # Расчет индекса ART
     def get_art(self, period = 14):
         n = period
