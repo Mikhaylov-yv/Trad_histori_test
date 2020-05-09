@@ -3,6 +3,37 @@ import numpy as np
 
 class Strategy:
 
+    # Расчет индекса ART
+    def get_art(self, period = 14):
+        n = period
+        df_dikt = self.df_dikt
+        for toll in list(df_dikt):
+            art = False
+            tr_list = []
+            art_list = []
+            df = df_dikt[toll]
+            for index in df.index:
+                index_num = list(df.index).index(index)
+                ht = df.loc[index, 'HIGH']
+                lt = df.loc[index, 'LOW']
+                ct = df.loc[df.index[index_num - 1], 'CLOSE']
+                tr1 = ht - lt
+                tr2 = abs(ht - ct)
+                tr3 = abs(lt - ct)
+                tr_list.append(max([tr1, tr2, tr3]))
+                if art == False:
+                    art = (1 / n) * sum(tr_list[-n:])
+                    art_list.append(art)
+                elif len(art_list) > 0:
+                    art = (art_list[-1] * (n - 1) + tr_list[-1]) / n
+                    art_list.append(art)
+                df.loc[index, 'ART'] = art
+            df_dikt[toll] = df
+        self.df_dikt = df_dikt
+        return self
+
+
+
     # Расчет 2-х скользящих средних и среднего процентного изменения самой быстрой и разметка по ним
     def get_two_ma_samp(self, ma_samp_slow_param=350, ma_samp_fast_param=100, pct_change=0.01):
 
